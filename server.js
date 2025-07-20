@@ -2,10 +2,10 @@ const express = require('express');
 const path = require('path');
 const cors = require('cors');
 const mongoose = require('mongoose');
+const serverless = require('serverless-http');
 require('dotenv').config();
 
 const app = express();
-const PORT = process.env.PORT;
 
 app.use(cors());
 app.use(express.json());
@@ -27,6 +27,11 @@ const participantsSchema = new mongoose.Schema({
 });
 
 const Participants = mongoose.model('participants', participantsSchema);
+
+// ROUTES
+app.get('/', (req, res) => {
+    res.send("Express server running on Vercel!");
+});
 
 app.post('/register', async (req, res) => {
     const { nama, blok_rumah, nohp, kategori, lomba } = req.body;
@@ -76,7 +81,6 @@ app.get('/download-json', async (req, res) => {
     }
 });
 
-// Jalankan server
-app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
-});
+// 👇 Ini bagian penting agar Vercel bisa handle Express
+module.exports = app;
+module.exports.handler = serverless(app);
