@@ -1,107 +1,70 @@
 const express = require('express');
 const path = require('path');
-const fs = require('fs');
 const cors = require('cors');
+const mongoose = require('mongoose');
+require('dotenv').config();
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT;
 
 app.use(cors());
-app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-const JSON_FILE_PATH = path.join(__dirname, 'pendaftaran.json');
+const DB_CONNECTION_STRING = process.env.MONGO_URI;
 
-let pendaftaranData = [];
+mongoose.connect(DB_CONNECTION_STRING)
+    .then(() => console.log('Connected to MongoDB'))
+    .catch(err => console.error('Error connecting to MongoDB:', err));
 
-const readJsonData = () => {
-    return new Promise((resolve, reject) => {
-        if (!fs.existsSync(JSON_FILE_PATH)) {
-            fs.writeFile(JSON_FILE_PATH, '[]', { encoding: 'utf8' }, (err) => {
-                if (err) {
-                    console.error('Error creating empty JSON file:', err);
-                    return reject(err);
-                }
-                console.log('pendaftaran.json created as empty array.');
-                return resolve([]);
-            });
-        } else {
-            fs.readFile(JSON_FILE_PATH, { encoding: 'utf8' }, (err, data) => {
-                if (err) {
-                    console.error('Error reading JSON file:', err);
-                    return reject(err);
-                }
-                try {
-                    const parsedData = JSON.parse(data);
-                    resolve(parsedData);
-                } catch (parseErr) {
-                    console.error('Error parsing JSON data:', parseErr);
-                    return resolve([]);
-                }
-            });
-        }
-    });
-};
+const participantsSchema = new mongoose.Schema({
+    nama: { type: String, required: true },
+    blok_rumah: { type: String, required: true },
+    nohp: { type: String, required: true },
+    kategori: { type: String, required: true },
+    lomba: { type: String, required: true },
+    timestamp: { type: Date, default: Date.now }
+});
 
-const saveJsonData = () => {
-    try {
-        const jsonString = JSON.stringify(pendaftaranData, null, 2);
-        fs.writeFile(JSON_FILE_PATH, jsonString, { encoding: 'utf8' }, err => {
-            if (err) {
-                console.error('Error writing JSON file:', err);
-            } else {
-                console.log('Data saved to pendaftaran.json');
-            }
-        });
-    } catch (err) {
-        console.error('Error stringifying data for JSON:', err);
-    }
-};
+const Participants = mongoose.model('participants', participantsSchema);
 
-readJsonData()
-    .then(data => {
-        pendaftaranData = data;
-    })
-    .catch(err => {
-        console.error('Failed to load initial data:', err);
-    });
-
-app.post('/submit-pendaftaran', async (req, res) => {
+app.post('/register', async (req, res) => {
     const { nama, blok_rumah, nohp, kategori, lomba } = req.body;
 
     if (!nama || !blok_rumah || !nohp || !kategori || !lomba) {
-        return res.status(400).json({ message: 'Semua kolom wajib diisi.' });
+        return res.status(400).json({ message: 'please fill all fields.' });
     }
 
-    const newPendaftaran = {
-        nama,
-        blok_rumah,
-        nohp,
-        kategori,
-        lomba,
-        timestamp: new Date().toISOString()
-    };
+    try {
+        const data = new Participants({
+            nama,
+            blok_rumah,
+            nohp,
+            kategori,
+            lomba
+        });
+        await data.save();
 
-    pendaftaranData.push(newPendaftaran);
-    saveJsonData(); 
-
-    res.status(200).json({ message: 'Pendaftaran berhasil diterima!' });
+        res.status(200).json({ message: 'Pendaftaran berhasil. Terima kasih!' });
+    } catch (error) {
+        console.error('Error saving data:', error);
+        res.status(500).json({ message: 'Gagal menyimpan data pendaftaran.' });
+    }
 });
 
-app.get('/data-pendaftaran', async (req, res) => {
+app.get('/participants', async (req, res) => {
     try {
-        const dataFromJson = await readJsonData();
-        res.status(200).json(dataFromJson);
+        const dataFromDb = await Participants.find().sort({ timestamp: -1 });
+        res.status(200).json(dataFromDb);
     } catch (error) {
-        console.error('Error fetching data from JSON:', error);
+        console.error('Error fetching data dari DB:', error);
         res.status(500).json({ message: 'Gagal membaca data pendaftaran.' });
     }
 });
 
 app.get('/download-json', async (req, res) => {
     try {
-        const dataToDownload = await readJsonData();
+        const dataToDownload = await Participants.find().sort({ timestamp: -1 });
         const jsonString = JSON.stringify(dataToDownload, null, 2);
         
         res.header('Content-Type', 'application/json');
@@ -115,5 +78,5 @@ app.get('/download-json', async (req, res) => {
 
 // Jalankan server
 app.listen(PORT, () => {
-    console.log(`Server started on http://localhost:${PORT}`);
+    console.log(`Server running on port ${PORT}`);
 });
