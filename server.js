@@ -58,11 +58,11 @@ app.post('/register', async (req, res) => {
 });
 
 function maskPhoneNumber(nohp) {
-    if (!nohp || nohp.length < 4) return nohp;
-    const first2 = nohp.slice(0, 2);
-    const last2 = nohp.slice(-2);
-    const middle = '*'.repeat(nohp.length - 4);
-    return `${first2}${middle}${last2}`;
+    if (!nohp || nohp.length < 8) return nohp;
+    const first4 = nohp.slice(0, 4);
+    const last4 = nohp.slice(-4);
+    const middle = '*'.repeat(nohp.length - 8);
+    return `${first4}${middle}${last4}`;
 }
 
 app.get('/participants', async (req, res) => {
