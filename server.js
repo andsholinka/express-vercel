@@ -3,6 +3,7 @@ const path = require('path');
 const cors = require('cors');
 const mongoose = require('mongoose');
 const serverless = require('serverless-http');
+const ExcelJS = require('exceljs');
 require('dotenv').config();
 
 const app = express();
@@ -81,17 +82,45 @@ app.get('/participants', async (req, res) => {
     }
 });
 
-app.get('/download-json', async (req, res) => {
+app.get('/download-excel', async (req, res) => {
     try {
-        const dataToDownload = await Participants.find().sort({ timestamp: -1 });
-        const jsonString = JSON.stringify(dataToDownload, null, 2);
-        
-        res.header('Content-Type', 'application/json');
-        res.attachment('data_pendaftaran.json');
-        return res.send(jsonString);
-    } catch (err) {
-        console.error('Error in /download-json:', err);
-        return res.status(500).send('Terjadi kesalahan saat membuat file JSON.');
+        const data = await Participants.find().sort({ timestamp: -1 });
+
+        const workbook = new ExcelJS.Workbook();
+        const worksheet = workbook.addWorksheet('Data Pendaftaran');
+
+        worksheet.columns = [
+            { header: 'Nama', key: 'nama', width: 20 },
+            { header: 'Blok Rumah', key: 'blok_rumah', width: 15 },
+            { header: 'No HP', key: 'nohp', width: 20 },
+            { header: 'Kategori', key: 'kategori', width: 15 },
+            { header: 'Lomba', key: 'lomba', width: 30 }
+        ];
+
+        data.forEach(item => {
+            worksheet.addRow({
+                nama: item.nama,
+                blok_rumah: item.blok_rumah,
+                nohp: item.nohp,
+                kategori: item.kategori,
+                lomba: item.lomba
+            });
+        });
+
+        res.setHeader(
+            'Content-Type',
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        );
+        res.setHeader(
+            'Content-Disposition',
+            'attachment; filename=data_pendaftaran.xlsx'
+        );
+
+        await workbook.xlsx.write(res);
+        res.end();
+    } catch (error) {
+        console.error('Error generating Excel:', error);
+        res.status(500).send('Gagal membuat file Excel.');
     }
 });
 
