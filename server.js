@@ -57,10 +57,24 @@ app.post('/register', async (req, res) => {
     }
 });
 
+function maskPhoneNumber(phone) {
+    if (!phone || phone.length < 4) return phone;
+    const first2 = phone.slice(0, 2);
+    const last2 = phone.slice(-2);
+    const middle = '*'.repeat(phone.length - 4);
+    return `${first2}${middle}${last2}`;
+}
+
 app.get('/participants', async (req, res) => {
     try {
         const dataFromDb = await Participants.find().sort({ timestamp: -1 });
-        res.status(200).json(dataFromDb);
+
+        const maskedData = dataFromDb.map(item => ({
+            ...item._doc,
+            phone: maskPhoneNumber(item.phone)
+        }));
+
+        res.status(200).json(maskedData);
     } catch (error) {
         console.error('Error fetching data dari DB:', error);
         res.status(500).json({ message: 'Gagal membaca data pendaftaran.' });
