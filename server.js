@@ -57,11 +57,11 @@ app.post('/register', async (req, res) => {
     }
 });
 
-function maskPhoneNumber(phone) {
-    if (!phone || phone.length < 4) return phone;
-    const first2 = phone.slice(0, 2);
-    const last2 = phone.slice(-2);
-    const middle = '*'.repeat(phone.length - 4);
+function maskPhoneNumber(nohp) {
+    if (!nohp || nohp.length < 4) return nohp;
+    const first2 = nohp.slice(0, 2);
+    const last2 = nohp.slice(-2);
+    const middle = '*'.repeat(nohp.length - 4);
     return `${first2}${middle}${last2}`;
 }
 
@@ -71,7 +71,7 @@ app.get('/participants', async (req, res) => {
 
         const maskedData = dataFromDb.map(item => ({
             ...item._doc,
-            phone: maskPhoneNumber(item.phone)
+            nohp: maskPhoneNumber(item.nohp)
         }));
 
         res.status(200).json(maskedData);
